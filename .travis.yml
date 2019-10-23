@@ -1,33 +1,16 @@
 language: bash
 services: docker
-
-env:
-  - VERSION=3 VARIANT=debian
-  - VERSION=3 VARIANT=alpine
-  - VERSION=2 VARIANT=debian
-  - VERSION=2 VARIANT=alpine
-  - VERSION=1 VARIANT=debian
-  - VERSION=1 VARIANT=alpine
-
-install:
-  - git clone https://github.com/docker-library/official-images.git ~/official-images
-
+before_install:
+- echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 before_script:
-  - env | sort
-  - wget -qO- 'https://github.com/tianon/pgp-happy-eyeballs/raw/master/hack-my-builds.sh' | bash
-  - cd "$VERSION/$VARIANT"
-  - image="ghost:$VERSION-$VARIANT"
-
+- ./update.sh
+- GHOST_VERSION=`git ls-remote --tags https://github.com/TryGhost/Ghost.git | cut -d$'\t' -f2 | grep -E '^refs/tags/[0-9]+\.[0-9]+' | cut -d/ -f3 | cut -d^ -f1 | sort -ruV | head -1`
 script:
-  - |
-    (
-      set -Eeuo pipefail
-      set -x
-      docker build -t "$image" .
-      ~/official-images/test/run.sh "$image"
-    )
-
+- docker build 3/debian/ -t alparaschiv/ghost-docker-node:$GHOST_VERSION
+- docker build 3/alpine/ -t alparaschiv/ghost-docker-node:$GHOST_VERSION-alpine
+- docker tag alparaschiv/ghost-docker-node:$GHOST_VERSION alparaschiv/ghost-docker-node:latest
 after_script:
-  - docker images
-
-# vim:set et ts=2 sw=2:
+- docker images
+- docker push alparaschiv/ghost-docker-node:$GHOST_VERSION-alpine
+- docker push alparaschiv/ghost-docker-node:$GHOST_VERSION
+- docker push alparaschiv/ghost-docker-node:latest
